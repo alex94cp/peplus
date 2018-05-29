@@ -9,14 +9,18 @@
 
 namespace peplus {
 
-template <unsigned int XX>
-using VirtualImage = detail::ImageBase<XX, VirtualOffset>;
+template <unsigned int XX, class MemoryBuffer>
+using VirtualImage = detail::ImageBase<XX, VirtualOffset, MemoryBuffer>;
 
-using VirtualImage32 = VirtualImage<32>;
-using VirtualImage64 = VirtualImage<64>;
+template <class MemoryBuffer>
+using VirtualImage32 = VirtualImage<32, MemoryBuffer>;
 
-template <unsigned int XX, class Offset>
-std::optional<VirtualOffset> to_image_offset(const VirtualImage<XX> & image, Offset offset)
+template <class MemoryBuffer>
+using VirtualImage64 = VirtualImage<64, MemoryBuffer>;
+
+template <unsigned int XX, class MemoryBuffer, class Offset>
+std::optional<VirtualOffset>
+	to_image_offset(const VirtualImage<XX, MemoryBuffer> & image, Offset offset)
 {
 	if constexpr (std::is_same_v<Offset, VirtualOffset>) {
 		return offset;

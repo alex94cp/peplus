@@ -9,14 +9,18 @@
 
 namespace peplus {
 
-template <unsigned int XX>
-using FileImage = detail::ImageBase<XX, FileOffset>;
+template <unsigned int XX, class MemoryBuffer>
+using FileImage = detail::ImageBase<XX, FileOffset, MemoryBuffer>;
 
-using FileImage32 = FileImage<32>;
-using FileImage64 = FileImage<64>;
+template <class MemoryBuffer>
+using FileImage32 = FileImage<32, MemoryBuffer>;
 
-template <unsigned int XX, class Offset>
-std::optional<FileOffset> to_image_offset(const FileImage<XX> & image, Offset offset)
+template <class MemoryBuffer>
+using FileImage64 = FileImage<64, MemoryBuffer>;
+
+template <unsigned int XX, class MemoryBuffer, class Offset>
+std::optional<FileOffset>
+	to_image_offset(const FileImage<XX, MemoryBuffer> & image, Offset offset)
 {
 	if constexpr (std::is_same_v<Offset, FileOffset>) {
 		return offset;

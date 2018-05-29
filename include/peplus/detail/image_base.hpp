@@ -2,7 +2,6 @@
 #define PEPLUS_DETAIL_IMAGEBASE_HPP_
 
 #include <peplus/headers.hpp>
-#include <peplus/memory_buffer.hpp>
 #include <peplus/pointed_value.hpp>
 #include <peplus/detail/entry_range.hpp>
 #include <peplus/detail/image_offset.hpp>
@@ -38,11 +37,12 @@ enum class ImageMachine
 	Unknown, I386, IA64, AMD64,
 };
 
-template <unsigned int XX, class Offset>
+template <unsigned int XX, class Offset, class MemoryBuffer>
 class ImageBase
 {
 public:
 	using offset_type = Offset;
+	using buffer_type = typename MemoryBuffer::value_type;
 
 	template <typename T>
 	using pointed = PointedValue<Offset, T>;
@@ -87,9 +87,9 @@ public:
 		std::size_t
 	>;
 
-	static bool is_valid(const MemoryBuffer & image_data);
+	static bool is_valid(const buffer_type & image_data);
 
-	explicit ImageBase(const MemoryBuffer & image_data);
+	explicit ImageBase(buffer_type image_data);
 
 	ImageType type() const;
 	ImageMachine machine() const;
@@ -129,14 +129,15 @@ public:
 private:
 	void do_read_from_buffer(std::size_t offset, std::size_t size, void * into_buffer) const;
 
-	const MemoryBuffer * _image_data;
+	buffer_type _image_data;
 };
 
-template <unsigned int XX, class Offset>
-bool ImageBase<XX, Offset>::is_valid(const MemoryBuffer & image_data)
+template <unsigned int XX, class Offset, class MemoryBuffer>
+bool ImageBase<XX, Offset, MemoryBuffer>::is_valid(const buffer_type & image_data)
 {
 	DosHeader dos_header;
-	std::size_t bytes_read = image_data.read(0, sizeof(DosHeader), &dos_header);
+	std::size_t bytes_read = MemoryBuffer::read(image_data, 0, sizeof(DosHeader),
+	                                            &dos_header);
 	if (bytes_read < sizeof(DosHeader)) return false;
 
 	boost::endian::little_to_native_inplace(dos_header.e_magic);
@@ -144,7 +145,8 @@ bool ImageBase<XX, Offset>::is_valid(const MemoryBuffer & image_data)
 
 	NtHeaders<XX> nt_headers;
 	boost::endian::little_to_native_inplace(dos_header.e_lfanew);
-	bytes_read = image_data.read(dos_header.e_lfanew, sizeof(NtHeaders<XX>), &nt_headers);
+	bytes_read = MemoryBuffer::read(image_data, dos_header.e_lfanew,
+	                                sizeof(NtHeaders<XX>), &nt_headers);
 	if (bytes_read < sizeof(NtHeaders<XX>)) return false;
 
 	boost::endian::little_to_native_inplace(nt_headers.signature);
@@ -156,16 +158,16 @@ bool ImageBase<XX, Offset>::is_valid(const MemoryBuffer & image_data)
 	return true;
 }
 
-template <unsigned int XX, class Offset>
-ImageBase<XX, Offset>::ImageBase(const MemoryBuffer & image_data)
-	: _image_data { &image_data }
+template <unsigned int XX, class Offset, class MemoryBuffer>
+ImageBase<XX, Offset, MemoryBuffer>::ImageBase(buffer_type image_data)
+	: _image_data { std::move(image_data) }
 {
-	if (!is_valid(image_data))
+	if (!is_valid(_image_data))
 		throw std::runtime_error("Image format not valid");
 }
 
-template <unsigned int XX, class Offset>
-ImageType ImageBase<XX, Offset>::type() const
+template <unsigned int XX, class Offset, class MemoryBuffer>
+ImageType ImageBase<XX, Offset, MemoryBuffer>::type() const
 {
 	const pointed<FileHeader> file_header = this->file_header();
 	if ((file_header.characteristics & FILE_EXECUTABLE_IMAGE) != 0) {
@@ -176,8 +178,8 @@ ImageType ImageBase<XX, Offset>::type() const
 	return ImageType::Unknown;
 }
 
-template <unsigned int XX, class Offset>
-ImageMachine ImageBase<XX, Offset>::machine() const
+template <unsigned int XX, class Offset, class MemoryBuffer>
+ImageMachine ImageBase<XX, Offset, MemoryBuffer>::machine() const
 {
 	switch (file_header().machine) {
 		case FILE_MACHINE_I386:  return ImageMachine::I386;
@@ -187,14 +189,14 @@ ImageMachine ImageBase<XX, Offset>::machine() const
 	}
 }
 
-template <unsigned int XX, class Offset>
-inline VirtualOffset ImageBase<XX, Offset>::entry_point() const
+template <unsigned int XX, class Offset, class MemoryBuffer>
+inline VirtualOffset ImageBase<XX, Offset, MemoryBuffer>::entry_point() const
 {
 	return VirtualOffset(optional_header().address_of_entry_point);
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::dos_header() const -> pointed<DosHeader>
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::dos_header() const -> pointed<DosHeader>
 {
 	DosHeader dos_header;
 	do_read_from_buffer(0, sizeof(DosHeader), &dos_header);
@@ -222,8 +224,8 @@ auto ImageBase<XX, Offset>::dos_header() const -> pointed<DosHeader>
 	return PointedValue(Offset(0), dos_header);
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::nt_headers() const -> pointed<NtHeaders<XX>>
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::nt_headers() const -> pointed<NtHeaders<XX>>
 {
 	NtHeaders<XX> nt_headers;
 	const std::size_t nt_headers_offset = dos_header().e_lfanew;
@@ -236,8 +238,8 @@ auto ImageBase<XX, Offset>::nt_headers() const -> pointed<NtHeaders<XX>>
 	return PointedValue(Offset(nt_headers_offset), nt_headers);
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::file_header() const -> pointed<FileHeader>
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::file_header() const -> pointed<FileHeader>
 {
 	FileHeader file_header;
 	const std::size_t file_header_offset = dos_header().e_lfanew + offsetof(NtHeaders<XX>, file_header);
@@ -253,8 +255,8 @@ auto ImageBase<XX, Offset>::file_header() const -> pointed<FileHeader>
 	return PointedValue(Offset(file_header_offset), file_header);
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::optional_header() const -> pointed<OptionalHeader<XX>>
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::optional_header() const -> pointed<OptionalHeader<XX>>
 {
 	OptionalHeader<XX> optional_header;
 	const std::size_t opt_header_offset = dos_header().e_lfanew + offsetof(NtHeaders<XX>, optional_header);
@@ -307,8 +309,8 @@ auto ImageBase<XX, Offset>::optional_header() const -> pointed<OptionalHeader<XX
 	return PointedValue(Offset(opt_header_offset), optional_header);
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::section_headers() const -> SectionHeaderRange
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::section_headers() const -> SectionHeaderRange
 {
 	const pointed<NtHeaders<XX>> nt_headers = this->nt_headers();
 	const Offset offset_to_opt_header = nt_headers.offset() + offsetof(NtHeaders<XX>, optional_header);
@@ -317,8 +319,8 @@ auto ImageBase<XX, Offset>::section_headers() const -> SectionHeaderRange
 	return SectionHeaderRange(*this, offset_to_section_headers, distance_to_last_header);
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::base_relocations() const -> BaseRelocationRange
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::base_relocations() const -> BaseRelocationRange
 {
 	const std::optional<pointed<DataDirectory>> data_dir = data_directory(DIRECTORY_ENTRY_BASERELOC);
 	if (!data_dir || data_dir->size == 0) return BaseRelocationRange(*this, Offset(0), 0);
@@ -329,8 +331,8 @@ auto ImageBase<XX, Offset>::base_relocations() const -> BaseRelocationRange
 	return BaseRelocationRange(*this, *data_offset, data_dir->size);
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::debug_directories() const -> DebugDirectoryRange
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::debug_directories() const -> DebugDirectoryRange
 {
 	const std::optional<pointed<DataDirectory>> data_dir = data_directory(DIRECTORY_ENTRY_DEBUG);
 	if (!data_dir || data_dir->size == 0) return DebugDirectoryRange(*this, Offset(0), 0);
@@ -341,8 +343,8 @@ auto ImageBase<XX, Offset>::debug_directories() const -> DebugDirectoryRange
 	return DebugDirectoryRange(*this, *data_offset, data_dir->size);
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::exception_entries() const -> RuntimeFunctionRange
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::exception_entries() const -> RuntimeFunctionRange
 {
 	const std::optional<pointed<DataDirectory>> data_dir = data_directory(DIRECTORY_ENTRY_EXCEPTION);
 	if (!data_dir || data_dir->size == 0) return RuntimeFunctionRange(*this, Offset(0), 0);
@@ -353,8 +355,8 @@ auto ImageBase<XX, Offset>::exception_entries() const -> RuntimeFunctionRange
 	return RuntimeFunctionRange(*this, data_offset->value(), data_dir->size);
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::import_descriptors() const -> ImportDescriptorRange
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::import_descriptors() const -> ImportDescriptorRange
 {
 	const std::optional<pointed<DataDirectory>> data_dir = data_directory(DIRECTORY_ENTRY_IMPORT);
 	if (!data_dir || data_dir->size < sizeof(ImportDescriptor)) throw std::runtime_error("Invalid import data directory");
@@ -365,8 +367,8 @@ auto ImageBase<XX, Offset>::import_descriptors() const -> ImportDescriptorRange
 	return ImportDescriptorRange(*this, *data_offset);
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::resource_directory() const -> std::optional<ResourceDirectoryFacade<ImageBase>>
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::resource_directory() const -> std::optional<ResourceDirectoryFacade<ImageBase>>
 {
 	const std::optional<pointed<DataDirectory>> data_dir = data_directory(DIRECTORY_ENTRY_RESOURCE);
 	if (!data_dir || data_dir->size < offsetof(ResourceDirectory, directory_entries)) return std::nullopt;
@@ -377,8 +379,8 @@ auto ImageBase<XX, Offset>::resource_directory() const -> std::optional<Resource
 	return ResourceDirectoryFacade(*this, *data_offset);
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::tls_directory() const -> std::optional<pointed<TlsDirectoryFacade<XX, ImageBase>>>
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::tls_directory() const -> std::optional<pointed<TlsDirectoryFacade<XX, ImageBase>>>
 {
 	const std::optional<pointed<DataDirectory>> data_dir = data_directory(DIRECTORY_ENTRY_TLS);
 	if (!data_dir || data_dir->size < sizeof(TlsDirectory<XX>)) return std::nullopt;
@@ -390,8 +392,8 @@ auto ImageBase<XX, Offset>::tls_directory() const -> std::optional<pointed<TlsDi
 	return PointedValue(*data_offset, std::move(tls_directory));
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::export_directory() const -> std::optional<pointed<ExportDirectoryFacade<ImageBase>>>
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::export_directory() const -> std::optional<pointed<ExportDirectoryFacade<ImageBase>>>
 {
 	const std::optional<pointed<DataDirectory>> data_dir = data_directory(DIRECTORY_ENTRY_EXPORT);
 	if (!data_dir || data_dir->size < sizeof(ExportDirectory)) return std::nullopt;
@@ -404,8 +406,8 @@ auto ImageBase<XX, Offset>::export_directory() const -> std::optional<pointed<Ex
 	return PointedValue(*data_offset, std::move(export_dir));
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::copyright_str() const -> std::optional<pointed<std::string>>
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::copyright_str() const -> std::optional<pointed<std::string>>
 {
 	if (const auto data_dir = data_directory(DIRECTORY_ENTRY_COPYRIGHT); data_dir)
 		return read_string(VirtualOffset(data_dir->virtual_address), data_dir->size);
@@ -413,8 +415,8 @@ auto ImageBase<XX, Offset>::copyright_str() const -> std::optional<pointed<std::
 	return std::nullopt;
 }
 
-template <unsigned int XX, class Offset>
-auto ImageBase<XX, Offset>::data_directory(DirectoryEntryIndex index) const -> std::optional<pointed<DataDirectory>>
+template <unsigned int XX, class Offset, class MemoryBuffer>
+auto ImageBase<XX, Offset, MemoryBuffer>::data_directory(DirectoryEntryIndex index) const -> std::optional<pointed<DataDirectory>>
 {
 	const pointed<OptionalHeader<XX>> opt_header = optional_header();
 	if (index >= NUMBEROF_DIRECTORY_ENTRIES) return std::nullopt;
@@ -426,8 +428,8 @@ auto ImageBase<XX, Offset>::data_directory(DirectoryEntryIndex index) const -> s
 	return PointedValue(datadir_offset, data_dir);
 }
 
-template <unsigned int XX, class Offset>
-std::optional<FileOffset> ImageBase<XX, Offset>::to_file_offset(VirtualOffset rva) const
+template <unsigned int XX, class Offset, class MemoryBuffer>
+std::optional<FileOffset> ImageBase<XX, Offset, MemoryBuffer>::to_file_offset(VirtualOffset rva) const
 {
 	if (rva < VirtualOffset(optional_header().size_of_headers))
 		return FileOffset(rva.value());
@@ -443,8 +445,8 @@ std::optional<FileOffset> ImageBase<XX, Offset>::to_file_offset(VirtualOffset rv
 	return std::nullopt;
 }
 
-template <unsigned int XX, class Offset>
-std::optional<VirtualOffset> ImageBase<XX, Offset>::to_virtual_offset(FileOffset offs) const
+template <unsigned int XX, class Offset, class MemoryBuffer>
+std::optional<VirtualOffset> ImageBase<XX, Offset, MemoryBuffer>::to_virtual_offset(FileOffset offs) const
 {
 	if (offs < FileOffset(optional_header().size_of_headers))
 		return VirtualOffset(offs.value());
@@ -460,8 +462,8 @@ std::optional<VirtualOffset> ImageBase<XX, Offset>::to_virtual_offset(FileOffset
 	return std::nullopt;
 }
 
-template <unsigned int XX, class Offset> template <class CharT, class DataOffset>
-auto ImageBase<XX, Offset>::read_string(DataOffset from) const -> pointed<std::basic_string<CharT>>
+template <unsigned int XX, class Offset, class MemoryBuffer> template <class CharT, class DataOffset>
+auto ImageBase<XX, Offset, MemoryBuffer>::read_string(DataOffset from) const -> pointed<std::basic_string<CharT>>
 {
 	const std::optional<Offset> data_offset = to_image_offset(*this, from);
 	if (!data_offset) throw std::runtime_error("Invalid offset given");
@@ -482,28 +484,29 @@ auto ImageBase<XX, Offset>::read_string(DataOffset from) const -> pointed<std::b
 	return PointedValue(*data_offset, oss.str());
 }
 
-template <unsigned int XX, class Offset> template <class CharT, class DataOffset>
-auto ImageBase<XX, Offset>::read_string(DataOffset from, std::size_t length) const -> pointed<std::basic_string<CharT>>
+template <unsigned int XX, class Offset, class MemoryBuffer> template <class CharT, class DataOffset>
+auto ImageBase<XX, Offset, MemoryBuffer>::read_string(DataOffset from, std::size_t length) const -> pointed<std::basic_string<CharT>>
 {
 	std::vector<CharT> strbuf (length);
 	const auto [size, offset] = read(from, length * sizeof(CharT), strbuf.data());
 	return PointedValue(offset, std::basic_string<CharT>(strbuf.data(), size / sizeof(CharT)));
 }
 
-template <unsigned int XX, class Offset> template <class DataOffset>
-std::pair<std::size_t, Offset> ImageBase<XX, Offset>::read(DataOffset offset, std::size_t size, void * into_buffer) const
+template <unsigned int XX, class Offset, class MemoryBuffer> template <class DataOffset>
+std::pair<std::size_t, Offset> ImageBase<XX, Offset, MemoryBuffer>::read(DataOffset offset, std::size_t size, void * into_buffer) const
 {
 	const std::optional<Offset> data_offset = to_image_offset(*this, offset);
 	if (!data_offset) throw std::runtime_error("Invalid offset given");
 
-	const std::size_t bytes_read = _image_data->read(data_offset->value(), size, into_buffer);
+	const std::size_t bytes_read = MemoryBuffer::read(_image_data, data_offset->value(),
+	                                                  size, into_buffer);
 	return std::pair(bytes_read, *data_offset);
 }
 
-template <unsigned int XX, class Offset>
-void ImageBase<XX, Offset>::do_read_from_buffer(std::size_t offset, std::size_t size, void * into_buffer) const
+template <unsigned int XX, class Offset, class MemoryBuffer>
+void ImageBase<XX, Offset, MemoryBuffer>::do_read_from_buffer(std::size_t offset, std::size_t size, void * into_buffer) const
 {
-	const std::size_t bytes_read = _image_data->read(offset, size, into_buffer);
+	const std::size_t bytes_read = MemoryBuffer::read(_image_data, offset, size, into_buffer);
 	if (bytes_read < size) throw std::runtime_error("Malformed image");
 }
 

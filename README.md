@@ -1,4 +1,4 @@
-# peplus
+# PEPlus
 
 A cross-platform header-only PE parser library for C++17
 
@@ -6,7 +6,7 @@ A cross-platform header-only PE parser library for C++17
 
 From developer tools to antivirus software, a lot of programs need to extract some information from PE files (including executables and dynamic link libraries). Although there are some existing solutions for that (such as [pefile](https://github.com/erocarrera/pefile) for python), there isn't a clear winner when it comes to C++.
 
-peplus is an attempt to make PE parsing simple in C++. It takes advantage of new features present in C++17 (such as user-defined literals and range-based for-loops) so that the code you write is both expressive and easy to read.
+PEPlus is an attempt to make PE parsing simple in C++. It takes advantage of new features present in C++17 (such as user-defined literals and range-based for-loops) so that the code you write is both expressive and easy to read.
 
 ## Features
 
@@ -20,20 +20,24 @@ peplus is an attempt to make PE parsing simple in C++. It takes advantage of new
 
 ## Usage
 
-These are all the include files you'll need:
+These are all the include files you need to know about:
 
 ```cpp
-#include <peplus/file_image.hpp>    // PE file image classes
-#include <peplus/virtual_image.hpp> // Loaded PE image classes
+#include <peplus/local_buffer.hpp>  // Local memory buffer classes
+#include <peplus/any_buffer.hpp>    // Type-erasing buffer interface
+
+#include <peplus/file_image.hpp>    // PE file image parser class
+#include <peplus/virtual_image.hpp> // Loaded PE image parser class
 ```
 
 Creating a parser instance is simple:
 
 ```cpp
+using namespace peplus;
+
 const char image_data[] = { /* your image data here */ };
 
-peplus::LocalMemoryBuffer image_buffer { image_data, sizeof(image_data) };
-peplus::FileImage64 image { image_buffer };
+FileImage64<local_buffer> image { image_data };
 ```
 
 This is how you access the optional header:
