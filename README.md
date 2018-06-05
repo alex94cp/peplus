@@ -80,7 +80,6 @@ Reading data from your image is simple too:
 ```cpp
 using namespace peplus::literals::offset_literals;
 
-char buffer[3];
-std::fill_n(buffer, sizeof(buffer), 0);
+char buffer[3] = {};
 image.read(0_rva, 2, buffer); // now buffer equals "MZ"
 ```
