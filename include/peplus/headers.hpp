@@ -544,14 +544,11 @@ enum {
 	UWOP_PUSH_MACHFRAME,
 };
 
-union UnwindCode
+struct UnwindCode
 {
-	struct {
-		BYTE code_offset    ;
-		BYTE unwind_op   : 4;
-		BYTE op_info     : 4;
-	};
-	USHORT   frame_offset   ;
+	BYTE code_offset    ;
+	BYTE unwind_op   : 4;
+	BYTE op_info     : 4;
 };
 
 struct UnwindInfo

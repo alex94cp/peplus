@@ -38,12 +38,11 @@ private:
 	VirtualOffset _base_rva;
 };
 
-template <class Image>
-class BaseRelocationFacade
-	: public PointedValue<typename Image::offset_type, BaseRelocation>
+template <class Image, class Offset = typename Image::offset_type>
+class BaseRelocationFacade : public PointedValue<Offset, BaseRelocation>
 {
 public:
-	using offset_type = typename Image::offset_type;
+	using offset_type = Offset;
 
 	using RelTypeOffsetRange = EntryRange <
 		Image, read_pointed_value<read_trivial_le_value<WORD>>,
@@ -67,7 +66,7 @@ private:
 	const Image * _image;
 };
 
-template <class Image, class Offset>
+template <class Image, class Offset = typename Image::offset_type>
 BaseRelocation read_base_relocation_from_image(const Image & image, Offset offset)
 {
 	BaseRelocation base_relocation;
@@ -77,21 +76,21 @@ BaseRelocation read_base_relocation_from_image(const Image & image, Offset offse
 	return base_relocation;
 }
 
-template <class Image>
-BaseRelocationFacade<Image>::BaseRelocationFacade(const Image & image, offset_type offset)
+template <class Image, class Offset>
+BaseRelocationFacade<Image, Offset>::BaseRelocationFacade(const Image & image, offset_type offset)
 	: PointedValue { offset, read_base_relocation_from_image(image, offset) }
 	, _image { &image } {}
 
-template <class Image>
-auto BaseRelocationFacade<Image>::entries() const -> RelocationEntryRange
+template <class Image, class Offset>
+auto BaseRelocationFacade<Image, Offset>::entries() const -> RelocationEntryRange
 {
 	const VirtualOffset reloc_base { this->virtual_address };
 	rel_type_offset_to_relocation_entry_transformer to_relocation_entries { reloc_base };
 	return RelocationEntryRange(type_offsets(), std::move(to_relocation_entries));
 }
 
-template <class Image>
-auto BaseRelocationFacade<Image>::type_offsets() const -> RelTypeOffsetRange
+template <class Image, class Offset>
+auto BaseRelocationFacade<Image, Offset>::type_offsets() const -> RelTypeOffsetRange
 {
 	const offset_type reltypes_offset = this->offset() + offsetof(BaseRelocation, type_offset);
 	const std::size_t reltypes_size = this->size_of_block - offsetof(BaseRelocation, type_offset);

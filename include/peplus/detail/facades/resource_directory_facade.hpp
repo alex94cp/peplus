@@ -26,7 +26,7 @@ public:
 	using offset_type = typename Image::offset_type;
 
 	template <typename T>
-	using pointed = PointedValue<offset_type, T>;
+	using Pointed = PointedValue<offset_type, T>;
 
 	using ResourceDirectoryEntryRange = EntryRange <
 		Image, read_pointed_value<read_proxy_object<ResourceDirectoryEntryFacade<Image>, runtime_param<0>>>,
@@ -53,7 +53,7 @@ public:
 	using offset_type = typename Image::offset_type;
 
 	template <typename T>
-	using pointed = PointedValue<offset_type, T>;
+	using Pointed = PointedValue<offset_type, T>;
 
 	ResourceDirectoryEntryFacade(const Image & image, offset_type offset,
 	                             offset_type rdata_begin);
@@ -62,10 +62,10 @@ public:
 	bool is_data_entry() const;
 	bool is_named_entry() const;
 
-	std::optional<pointed<std::wstring>> name_str() const;
+	std::optional<Pointed<std::wstring>> name_str() const;
 
 	std::optional<std::pair<offset_type, std::size_t>> data() const;
-	std::optional<pointed<ResourceDataEntry>> as_data_entry() const;
+	std::optional<Pointed<ResourceDataEntry>> as_data_entry() const;
 	std::optional<ResourceDirectoryFacade<Image>> as_directory() const;
 
 protected:
@@ -73,7 +73,7 @@ protected:
 	offset_type   _rdata_begin;
 };
 
-template <class Image, class Offset>
+template <class Image, class Offset = typename Image::offset_type>
 ResourceDirectoryEntry read_resource_directory_entry_from_image(const Image & image, Offset offset)
 {
 	ResourceDirectoryEntry resource_entry;
@@ -83,7 +83,7 @@ ResourceDirectoryEntry read_resource_directory_entry_from_image(const Image & im
 	return resource_entry;
 }
 
-template <class Image, class Offset>
+template <class Image, class Offset = typename Image::offset_type>
 ResourceDirectory read_resource_directory_from_image(const Image & image, Offset offset)
 {
 	ResourceDirectory resource_directory;
@@ -119,7 +119,7 @@ ResourceDirectoryFacade<Image>::ResourceDirectoryFacade(const Image & image, off
 template <class Image>
 ResourceDirectoryFacade<Image>::ResourceDirectoryFacade(const Image & image, offset_type offset,
                                                         offset_type rdata_begin)
-	: pointed<ResourceDirectory> { offset, read_resource_directory_from_image(image, offset) }
+	: Pointed<ResourceDirectory> { offset, read_resource_directory_from_image(image, offset) }
 	, _image { &image }, _rdata_begin { rdata_begin } {}
 
 template <class Image>
@@ -172,7 +172,7 @@ bool ResourceDirectoryEntryFacade<Image>::is_named_entry() const
 }
 
 template <class Image>
-auto ResourceDirectoryEntryFacade<Image>::name_str() const -> std::optional<pointed<std::wstring>>
+auto ResourceDirectoryEntryFacade<Image>::name_str() const -> std::optional<Pointed<std::wstring>>
 {
 	if (!is_named_entry()) return std::nullopt;
 
@@ -191,7 +191,7 @@ auto ResourceDirectoryEntryFacade<Image>::data() const -> std::optional<std::pai
 }
 
 template <class Image>
-auto ResourceDirectoryEntryFacade<Image>::as_data_entry() const -> std::optional<pointed<ResourceDataEntry>>
+auto ResourceDirectoryEntryFacade<Image>::as_data_entry() const -> std::optional<Pointed<ResourceDataEntry>>
 {
 	if (!is_data_entry()) return std::nullopt;
 

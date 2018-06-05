@@ -18,7 +18,7 @@ public:
 	using offset_type = typename Image::offset_type;
 
 	template <typename T>
-	using pointed = PointedValue<offset_type, T>;
+	using Pointed = PointedValue<offset_type, T>;
 
 	using TlsCallbackRange = EntryRange <
 		Image, read_pointed_trivial_le_value_as<VirtualOffset, ULONG_PTR<XX>>,
@@ -36,7 +36,7 @@ private:
 	const Image * _image;
 };
 
-template <unsigned int XX, class Image, class Offset>
+template <unsigned int XX, class Image, class Offset = typename Image::offset_type>
 TlsDirectory<XX> read_tls_directory_from_image(const Image & image, Offset offset)
 {
 	TlsDirectory<XX> tls_directory;

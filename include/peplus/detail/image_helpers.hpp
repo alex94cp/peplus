@@ -154,20 +154,6 @@ struct read_debug_directory
 	}
 };
 
-struct read_runtime_function
-{
-	template <class Image, class Offset, class RtParams>
-	static RuntimeFunction read_value(const Image & image, Offset offset, const RtParams &)
-	{
-		RuntimeFunction runtime_function;
-		image_do_read(image, offset, sizeof(RuntimeFunction), &runtime_function);
-		boost::endian::little_to_native_inplace(runtime_function.begin_address);
-		boost::endian::little_to_native_inplace(runtime_function.end_address  );
-		boost::endian::little_to_native_inplace(runtime_function.unwind_data  );
-		return runtime_function;
-	}
-};
-
 template <typename Distance>
 struct fixed_distance_advance_pointer_policy;
 

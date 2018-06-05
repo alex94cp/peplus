@@ -79,7 +79,7 @@ public:
 	using offset_type = typename Image::offset_type;
 
 	template <typename T>
-	using pointed = PointedValue<offset_type, T>;
+	using Pointed = PointedValue<offset_type, T>;
 
 	using ThunkDataRange = EntryRange <
 		Image, read_pointed_value<read_thunk_data<XX>>,
@@ -95,7 +95,7 @@ public:
 
 	ImportDescriptorFacade(const Image & image, offset_type offset);
 
-	pointed<std::string> name_str() const;
+	Pointed<std::string> name_str() const;
 
 	ThunkDataRange thunks() const;
 	ThunkDataRange original_thunks() const;
@@ -113,7 +113,7 @@ constexpr bool is_named_import_v = std::is_base_of_v<detail::NamedImport<FileOff
 template <class ImportEntry>
 constexpr bool is_unnamed_import_v = std::is_base_of_v<detail::UnnamedImport, std::decay_t<ImportEntry>>;
 
-template <class Image, class Offset>
+template <class Image, class Offset = typename Image::offset_type>
 ImportDescriptor read_import_descriptor_from_image(const Image & image, Offset offset)
 {
 	ImportDescriptor import_descriptor;
@@ -132,7 +132,7 @@ ImportDescriptorFacade<XX, Image>::ImportDescriptorFacade(const Image & image, o
 	, _image { &image } {}
 
 template <unsigned int XX, class Image>
-auto ImportDescriptorFacade<XX, Image>::name_str() const -> pointed<std::string>
+auto ImportDescriptorFacade<XX, Image>::name_str() const -> Pointed<std::string>
 {
 	return _image->read_string(VirtualOffset(this->name));
 }

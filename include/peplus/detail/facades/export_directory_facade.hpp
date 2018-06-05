@@ -37,7 +37,7 @@ public:
 	using offset_type = typename Image::offset_type;
 
 	template <typename T>
-	using pointed = PointedValue<offset_type, T>;
+	using Pointed = PointedValue<offset_type, T>;
 
 	using ExportNameRange = EntryRange <
 		Image, read_pointed_value<read_rva_string>,
@@ -53,7 +53,7 @@ public:
 
 	ExportDirectoryFacade(const Image & image, offset_type offset);
 
-	pointed<std::string> name_str() const;
+	Pointed<std::string> name_str() const;
 
 	ExportNameRange names() const;
 	ExportFunctionRvaRange functions() const;
@@ -73,7 +73,7 @@ private:
 	const Image * _image;
 };
 
-template <class Image, class Offset>
+template <class Image, class Offset = typename Image::offset_type>
 ExportDirectory read_export_directory_from_image(const Image & image, Offset offset)
 {
 	ExportDirectory export_dir;
@@ -109,7 +109,7 @@ ExportDirectoryFacade<Image>::ExportDirectoryFacade(const Image & image, offset_
 	, _image { &image } {}
 
 template <class Image>
-auto ExportDirectoryFacade<Image>::name_str() const -> pointed<std::string>
+auto ExportDirectoryFacade<Image>::name_str() const -> Pointed<std::string>
 {
 	return _image->read_string(VirtualOffset(this->name));
 }
