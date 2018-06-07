@@ -2,7 +2,7 @@
 #define PEPLUS_DETAIL_IMAGEBASE_HPP_
 
 #include <peplus/headers.hpp>
-#include <peplus/Pointed_value.hpp>
+#include <peplus/pointed_value.hpp>
 #include <peplus/detail/entry_range.hpp>
 #include <peplus/detail/image_offset.hpp>
 #include <peplus/detail/image_helpers.hpp>
