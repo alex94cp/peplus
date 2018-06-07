@@ -16,9 +16,6 @@ using detail::ImageMachine;
 using detail::FileOffset;
 using detail::VirtualOffset;
 
-using detail::is_named_import_v;
-using detail::is_unnamed_import_v;
-
 }
 
 #endif

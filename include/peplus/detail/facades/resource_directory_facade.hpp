@@ -106,10 +106,10 @@ T read_le_integral(const Image & image, Offset offset)
 }
 
 template <class Image, class Offset>
-auto read_resource_string(const Image & image, Offset offset)
+auto read_resource_string(const Image & image, Offset offset) -> PointedValue<Offset, std::wstring>
 {
 	const std::size_t length = read_le_integral<unsigned short>(image, offset);
-	return image.read_string<wchar_t>(offset + sizeof(unsigned short), length);
+	return image.template read_string<wchar_t>(offset + sizeof(unsigned short), length);
 }
 
 template <class Image>

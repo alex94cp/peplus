@@ -52,7 +52,7 @@ TlsDirectory<XX> read_tls_directory_from_image(const Image & image, Offset offse
 
 template <unsigned int XX, class Image>
 TlsDirectoryFacade<XX, Image>::TlsDirectoryFacade(const Image & image, offset_type offset)
-	: TlsDirectory { read_tls_directory_from_image<XX>(image, offset) }
+	: TlsDirectory<XX> { read_tls_directory_from_image<XX>(image, offset) }
 	, _image { &image } {}
 
 template <unsigned int XX, class Image>

@@ -48,11 +48,8 @@ public:
 	template <typename T>
 	using Pointed = PointedValue<Offset, T>;
 
-	using ExportInfo = ExportInfo<offset_type>;
-	using ImportEntry = ImportEntry<offset_type>;
-
-	using UnnamedExport = UnnamedImport;
-	using NamedExport = NamedImport<offset_type>;
+	using ExportInfo = typename ExportDirectoryFacade<ImageBase>::ExportInfo;
+	using ImportEntry = typename ImportDescriptorFacade<XX, ImageBase>::ImportEntry;
 
 	using SectionHeaderRange = EntryRange <
 		ImageBase, read_pointed_value<read_section_header>,

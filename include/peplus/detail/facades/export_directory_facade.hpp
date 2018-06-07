@@ -19,17 +19,6 @@
 
 namespace peplus::detail {
 
-template <class Offset>
-struct ExportInfo
-{
-	std::optional<PointedValue<Offset, std::string>> name;
-	DWORD                                            ordinal;
-	VirtualOffset                                    address;
-	std::optional<PointedValue<Offset, WORD>>        name_ordinal;
-	bool                                             is_forwarded;
-	std::optional<PointedValue<Offset, std::string>> forwarder_string;
-};
-
 template <class Image>
 class ExportDirectoryFacade : public ExportDirectory
 {
@@ -38,6 +27,16 @@ public:
 
 	template <typename T>
 	using Pointed = PointedValue<offset_type, T>;
+
+	struct ExportInfo
+	{
+		std::optional<Pointed<std::string>> name;
+		DWORD                               ordinal;
+		VirtualOffset                       address;
+		std::optional<Pointed<WORD>>        name_ordinal;
+		bool                                is_forwarded;
+		std::optional<Pointed<std::string>> forwarder_string;
+	};
 
 	using ExportNameRange = EntryRange <
 		Image, read_pointed_value<read_rva_string>,
@@ -58,8 +57,8 @@ public:
 	ExportNameRange names() const;
 	ExportFunctionRvaRange functions() const;
 
-	std::optional<ExportInfo<offset_type>> find(unsigned int ordinal) const;
-	std::optional<ExportInfo<offset_type>> find(std::string_view name) const;
+	std::optional<ExportInfo> find(unsigned int ordinal) const;
+	std::optional<ExportInfo> find(std::string_view name) const;
 
 private:
 	using ExportNameOrdinalRange = EntryRange <
@@ -154,11 +153,11 @@ auto ExportDirectoryFacade<Image>::name_ordinals() const -> ExportNameOrdinalRan
 }
 
 template <class Image>
-auto ExportDirectoryFacade<Image>::find(unsigned int ordinal) const -> std::optional<ExportInfo<offset_type>>
+auto ExportDirectoryFacade<Image>::find(unsigned int ordinal) const -> std::optional<ExportInfo>
 {
 	if (ordinal > this->number_of_functions) return std::nullopt;
 
-	ExportInfo<offset_type> export_info;
+	ExportInfo export_info;
 	export_info.ordinal = ordinal;
 
 	const auto export_fn_range = this->functions();
@@ -187,7 +186,7 @@ auto ExportDirectoryFacade<Image>::find(unsigned int ordinal) const -> std::opti
 }
 
 template <class Image>
-auto ExportDirectoryFacade<Image>::find(std::string_view name) const -> std::optional<ExportInfo<offset_type>>
+auto ExportDirectoryFacade<Image>::find(std::string_view name) const -> std::optional<ExportInfo>
 {
 	unsigned int name_index = 0;
 	for (auto & exported_name : names()) {
@@ -201,7 +200,7 @@ auto ExportDirectoryFacade<Image>::find(std::string_view name) const -> std::opt
 			if (*name_ordinal_it >= this->number_of_names)
 				throw std::runtime_error("Invalid export name ordinal");
 
-			ExportInfo<offset_type> export_info;
+			ExportInfo export_info;
 			export_info.name = std::move(exported_name);
 			export_info.name_ordinal = *name_ordinal_it;
 			export_info.ordinal = this->base + *name_ordinal_it;

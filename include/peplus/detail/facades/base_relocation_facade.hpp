@@ -78,7 +78,7 @@ BaseRelocation read_base_relocation_from_image(const Image & image, Offset offse
 
 template <class Image, class Offset>
 BaseRelocationFacade<Image, Offset>::BaseRelocationFacade(const Image & image, offset_type offset)
-	: PointedValue { offset, read_base_relocation_from_image(image, offset) }
+	: PointedValue<Offset, BaseRelocation> { offset, read_base_relocation_from_image(image, offset) }
 	, _image { &image } {}
 
 template <class Image, class Offset>
