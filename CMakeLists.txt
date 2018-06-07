@@ -19,7 +19,7 @@ target_include_directories(peplus INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SO
                                             $<INSTALL_INTERFACE:include> ${Boost_INCLUDE_DIRS})
 
 install(TARGETS peplus EXPORT peplus_targets INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(EXPORT peplus_targets FILE PEPlusConfig.cmake NAMESPACE PEPlus:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake)
+install(EXPORT peplus_targets FILE PEPlusConfig.cmake NAMESPACE PEPlus:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/peplus)
 export(EXPORT peplus_targets FILE PEPlusTargets.cmake NAMESPACE PEPlus::)
 
 configure_file(include/peplus/version.hpp.cmake include/peplus/version.hpp)
@@ -34,4 +34,4 @@ write_basic_package_version_file(PEPlusConfigVersion.cmake VERSION ${PROJECT_VER
 
 install(FILES ${CMAKE_BINARY_DIR}/PEPlusTargets.cmake
               ${CMAKE_BINARY_DIR}/PEPlusConfigVersion.cmake
-              DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake)
+              DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/peplus)
